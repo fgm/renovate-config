@@ -26,3 +26,9 @@ it can be extended from repositories hosted on other forges (GitLab, Gitea) as w
 - `schedule:monthly` — batches update PRs to a monthly window to limit churn.
 
 No automerge: every update opens a PR for review.
+
+## Self-hosted runner
+
+Repos on forges without a hosted Renovate app (GitLab, and later Forgejo) are driven by a
+self-hosted monthly runner documented in [`self-hosted/`](self-hosted/) — deployed on the
+`cof` host, which is provisioned *from* that directory.

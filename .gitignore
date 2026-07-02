@@ -1,1 +1,4 @@
 .idea/
+
+# Self-hosted runner secrets — never commit the filled-in env.
+self-hosted/renovate.env
