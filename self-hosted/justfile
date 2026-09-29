@@ -1,0 +1,48 @@
+# Self-hosted Renovate operations on cof. Run recipes from this directory: `just <recipe>`.
+# `just` runs each recipe with the working directory set here (self-hosted/).
+set shell := ["bash", "-uc"]
+
+# Show the recipe list.
+_default:
+    @just --list
+
+# One-time host provisioning: swap + cache/log dirs (idempotent).
+host-setup:
+    scripts/host-setup.sh
+
+# Pull the latest scripts + preset from git.
+deploy:
+    git -C .. pull --ff-only
+    @just check-deploy
+
+# Dry run — resolves everything but creates no PRs/MRs.
+dry-run:
+    RENOVATE_DRY_RUN=full LOG_LEVEL=info ./renovate-run.sh
+
+# Live run — opens update/onboarding PRs and MRs.
+run:
+    ./renovate-run.sh
+
+# Install the monthly cron (idempotent) — this is the go-live switch.
+install-cron:
+    scripts/install-cron.sh
+
+# Remove the monthly cron (idempotent).
+uninstall-cron:
+    scripts/uninstall-cron.sh
+
+# Full read-only health check: host + deploy + cron.
+doctor:
+    scripts/doctor.sh
+
+# Individual read-only checks.
+check-host:
+    scripts/check-host.sh
+check-deploy:
+    scripts/check-deploy.sh
+check-cron:
+    scripts/check-cron.sh
+
+# Confirm the stored tokens actually authenticate (hits GitHub + GitLab).
+check-tokens:
+    scripts/check-tokens.sh

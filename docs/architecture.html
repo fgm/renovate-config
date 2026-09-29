@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Renovate setup — who runs what where</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%A7%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="architecture.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <p class="eyebrow">OSInet · Renovate · PV-35</p>
+  <h1>One preset repo, two roles</h1>
+  <p class="lede">Everything about dependency updates across the fgm/OSInet repos flows from a single public repo, <code>github.com/fgm/renovate-config</code>. It plays two roles at once: it holds the
+    <strong>policy</strong> every repo pulls at run time, and it holds the <strong>runner code</strong> deployed to one host. Nothing runs automatically yet — this is the map of what's wired up.</p>
+
+  <div class="legend">
+    <div class="item"><span class="chip live">Ready</span> validated, waiting on your go-live signal</div>
+    <div class="item"><span class="chip held">Held</span> deployed but deliberately not running</div>
+    <div class="item"><span class="chip out">Out</span> known gap, tracked, blocked elsewhere</div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ===================== DIAGRAM ===================== -->
+  <h2><span class="idx">01</span> The flow, top to bottom</h2>
+  <p class="sub">Read it downward: the source of truth feeds an engine, the engine runs passes, each pass visits repos, and each repo reaches back up for policy.</p>
+
+  <div class="diagram">
+    <div class="flow">
+
+      <!-- source of truth -->
+      <div class="node source">
+        <p class="role">Source of truth · GitHub · public · branch main</p>
+        <div class="banner">
+          <span class="repo">github.com/fgm/renovate-config</span>
+        </div>
+        <div class="roles">
+          <div class="role-box">
+            <div class="k">▸ default.json — POLICY</div>
+            <div class="v">config:recommended + pinGitHubActionDigests + schedule:monthly. No automerge — every update is a PR you review.</div>
+          </div>
+          <div class="role-box">
+            <div class="k">▸ self-hosted/ — RUNNER CODE</div>
+            <div class="v">renovate-run.sh, a <span class="m">just</span> recipe layer (scripts/), renovate.env.example, README. cof runs a git checkout of this — never hand-edited; change here, then <span class="m">just deploy</span>.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="conn">
+        <div class="line"></div>
+        <div class="label">self-hosted/ pulled as a git checkout · just deploy</div>
+        <div class="arrow">▼</div>
+      </div>
+
+      <!-- engine -->
+      <div class="node engine">
+        <p class="role">The engine · where runs actually happen</p>
+        <p class="title">Host <span class="m">cof</span> &nbsp;<span class="chip held">Held</span></p>
+        <p class="desc">The code.osinet.fr server (Ubuntu 22.04, ~3.8 GB RAM, user <span class="m">ubuntu</span>). Runs <span class="m">npx renovate@42</span> from the git checkout at <span class="m">/var/www/renovate/config/self-hosted/</span>, driven by <span class="m">just</span> recipes. A monthly cron would trigger it — <strong>not installed yet</strong>.</p>
+        <div class="meta">
+          <span class="tag">renovate@42 (pinned)</span>
+          <span class="tag">cron: 1st monthly, 07:00 Paris — HELD</span>
+          <span class="tag">2 GB swap on /var/www</span>
+          <span class="tag">caches on /var/www/renovate/cache</span>
+          <span class="tag">just doctor: health check</span>
+        </div>
+      </div>
+
+      <div class="conn">
+        <div class="line"></div>
+        <div class="label">renovate-run.sh runs two passes, in order</div>
+        <div class="arrow">▼</div>
+      </div>
+
+      <!-- passes -->
+      <div class="passes">
+        <div class="pass">
+          <div class="head">
+            <span class="name">GitHub pass</span>
+            <span class="chip live">Ready</span>
+          </div>
+          <span class="count">20 active fgm repos · PLATFORM=github</span>
+          <ul>
+            <li>izidic, envrun, container</li>
+            <li>filog, twinui, crm, oui …</li>
+            <li>+ 13 more (listed in the script)</li>
+          </ul>
+        </div>
+        <div class="pass">
+          <div class="head">
+            <span class="name">GitLab pass</span>
+            <span class="chip live">Ready</span>
+          </div>
+          <span class="count">2 repos · PLATFORM=gitlab</span>
+          <ul>
+            <li>fgmarand/gopal</li>
+            <li>fgmarand/gocoverstats</li>
+          </ul>
+        </div>
+        <div class="pass dim">
+          <div class="head">
+            <span class="name">Gogs pass</span>
+            <span class="chip out">Out</span>
+          </div>
+          <span class="count">18 repos · not wired</span>
+          <ul>
+            <li>code.osinet.fr backend</li>
+            <li>lacks the Gitea API bits</li>
+            <li>blocked on WOF-47 (Forgejo)</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- runtime resolution back to source -->
+      <div class="resolve">
+        <div class="k">↑ how policy reaches each repo — resolved at run time</div>
+        <p>Each visited repo carries a tiny <span class="m">renovate.json</span>. During the run Renovate reads it, follows the <span class="m">github&gt;</span> reference back up to the preset, and
+          applies <span class="m">default.json</span>. So the engine visits the repo, and the repo pulls the policy — the two arrows meet here.</p>
+        <div class="chain">
+          <span>repo/renovate.json</span> <b>→</b>
+          <span>extends "github&gt;fgm/renovate-config"</span> <b>→</b>
+          <span>default.json applied</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ===================== ANATOMY OF A RUN ===================== -->
+  <h2><span class="idx">02</span> Anatomy of one run</h2>
+  <p class="sub">What happens end to end when <span class="m">./renovate-run.sh</span> fires on cof.</p>
+  <ol class="steps">
+    <li><b>Cron (or you) triggers</b> <span class="m">renovate-run.sh</span> on cof. It sources <span class="m">renovate.env</span> — tokens, the version pin, and the cache paths — never logging
+      secrets.
+    </li>
+    <li><b>GitHub pass:</b> Renovate visits each of the 20 repos. For each, it reads <span class="m">renovate.json</span>, resolves <span class="m">github&gt;fgm/renovate-config</span> → <span
+      class="m">default.json</span>, checks dependencies, and opens update PRs. A repo with no config gets an <b>onboarding PR</b> that adopts the preset.
+    </li>
+    <li><b>GitLab pass:</b> same for the 2 GitLab repos. A <span class="m">GITHUB_COM_TOKEN</span> is set so this non-GitHub pass can still fetch the <span class="m">github&gt;</span> preset and
+      GitHub-hosted release notes.
+    </li>
+    <li><b>Output:</b> PRs land on each repo; per-run logs land in <span class="m">log/</span>. The <span class="m">schedule:monthly</span> policy gates <em>when</em> PRs may open, independently of
+      when the cron fires.
+    </li>
+  </ol>
+  <p class="note">Last dry run (<span class="m">RENOVATE_DRY_RUN=full</span>): <strong>22 / 22 repos clean</strong>, would open 22 onboarding PRs, no OOM. The first <em>live</em> run
+    therefore opens ~22 onboarding PRs.</p>
+
+  <hr class="rule">
+
+  <!-- ===================== WHY THESE CHOICES ===================== -->
+  <h2><span class="idx">03</span> Why the odd bits are the way they are</h2>
+  <p class="sub">Each of these exists to solve a specific constraint on the cof host — none is arbitrary.</p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+      <tr>
+        <th>Setting</th>
+        <th>Reason</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>renovate@42 pinned</td>
+        <td class="why">cof runs Node 22 (shared with the Gogs 0.15 vite frontend — must not upgrade). Renovate 43+ needs Node 24. Drop the pin once the host is on Node 24.</td>
+      </tr>
+      <tr>
+        <td>2 GB swapfile</td>
+        <td class="why">npm-heavy repos spike ~1 GB RSS and OOM-killed the run. Swap lives on <span class="m">/var/www</span> (xfs → made with <span class="m">dd</span>, not fallocate).</td>
+      </tr>
+      <tr>
+        <td>caches on /var/www</td>
+        <td class="why"><span class="m">/</span> (20 GB) is near-full; <span class="m">/var/www</span> (30 GB) is the data volume. <span class="m">RENOVATE_BASE_DIR</span> + <span class="m">npm_config_cache</span>
+          keep clones and npx cache off <span class="m">/</span>.
+        </td>
+      </tr>
+      <tr>
+        <td>token: repo + workflow</td>
+        <td class="why">The preset pins GitHub Action digests, so Renovate edits <span class="m">.github/workflows/*.yml</span>; GitHub rejects those pushes without the <span class="m">workflow</span>
+          scope.
+        </td>
+      </tr>
+      <tr>
+        <td>no automerge / monthly</td>
+        <td class="why">The binding cost is <em>your</em> PR-review time, not compute — so batch updates monthly and keep a human in the loop.</td>
+      </tr>
+      <tr>
+        <td>Gogs out of scope</td>
+        <td class="why">Renovate has no Gogs platform; the 0.15-dev backend lacks <span class="m">/api/v1/version</span> and <span class="m">/api/v1/repos/*/pulls</span>. The Forgejo migration
+          (WOF-47) unblocks a 3rd, Gitea-platform pass.
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ===================== CURRENT STATUS ===================== -->
+  <h2><span class="idx">04</span> What's live right now</h2>
+  <p class="sub">Short version: it's built and validated, but intentionally idle.</p>
+  <div class="status">
+    <h3>Nothing is running — this is by design</h3>
+    <ul>
+      <li>The runner is deployed on cof and dry-run-clean, but there's <strong>no cron and no live PRs</strong>.</li>
+      <li>izidic's <span class="m">renovate.json</span> already extends the preset, but <strong>PR #23 is left open, unmerged</strong>.</li>
+      <li><strong>To go live:</strong> merge PR #23, then on cof <span class="m">just run</span> once, or <span class="m">just install-cron</span> for the monthly schedule. First live run ≈ 22
+        onboarding PRs.
+      </li>
+    </ul>
+  </div>
+
+  <hr class="rule">
+
+  <!-- ===================== LOCATIONS ===================== -->
+  <h2><span class="idx">05</span> Where everything lives</h2>
+  <p class="sub">The four places you'd touch to change any of the above.</p>
+  <div class="locs">
+    <div class="loc">
+      <div class="k">Preset repo (edit here)</div>
+      <div class="v">github.com/fgm/renovate-config · default.json + self-hosted/</div>
+    </div>
+    <div class="loc">
+      <div class="k">Runner host (runs here)</div>
+      <div class="v">ssh cof → /var/www/renovate/config/self-hosted (just …)</div>
+    </div>
+    <div class="loc">
+      <div class="k">Per-repo opt-in</div>
+      <div class="v">renovate.json → extends ["github&gt;fgm/renovate-config"]</div>
+    </div>
+    <div class="loc">
+      <div class="k">Tracking</div>
+      <div class="v">Jira PV-35 (setup) · WOF-47 (Gogs→Forgejo) · GitHub PR #23</div>
+    </div>
+  </div>
+
+  <footer>Map of the fgm/OSInet Renovate setup · sourced from renovate-config@main · 2026-07-04</footer>
+
+</div>
+</body>
+</html>

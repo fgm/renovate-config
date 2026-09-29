@@ -24,7 +24,7 @@ RENOVATE=(npx --yes "renovate@${RENOVATE_VERSION:-latest}")
 
 echo "=== GitHub pass $(date -u +%FT%TZ) ==="
 RENOVATE_PLATFORM=github RENOVATE_TOKEN="$GITHUB_TOKEN" "${RENOVATE[@]}" \
-  fgm/izidic fgm/envrun fgm/untilMongod fgm/container fgm/drupal_redis_stats \
+  fgm/izidic fgm/envrun fgm/container fgm/drupal_redis_stats \
   fgm/bo_htmx fgm/pflagheaders fgm/go__web_demo fgm/filog fgm/accounts-drupal \
   fgm/twinui fgm/frankenphp-drupal fgm/accordion fgm/subcommands_demo fgm/drupal-sso \
   fgm/accounts-fake fgm/xmlrpc fgm/tooling fgm/crm fgm/oui

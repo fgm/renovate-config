@@ -29,6 +29,10 @@ No automerge: every update opens a PR for review.
 
 ## Self-hosted runner
 
-Repos on forges without a hosted Renovate app (GitLab, and later Forgejo) are driven by a
-self-hosted monthly runner documented in [`self-hosted/`](self-hosted/) — deployed on the
-`cof` host, which is provisioned *from* that directory.
+Repos on forges without a hosted Renovate app (GitLab, and later Forgejo) would be driven by a
+self-hosted monthly runner, documented in [`self-hosted/`](self-hosted/) and intended for the
+`cof` host, which that directory provisions.
+
+**It is not running.** The runner was built and exercised by hand on 2026-07-02; the go-live
+switch (`just install-cron`) was never flipped and the checkout was not kept. See
+[`self-hosted/`](self-hosted/) for what is and is not on the host.
